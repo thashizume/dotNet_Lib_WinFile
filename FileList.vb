@@ -35,6 +35,34 @@
         End Get
     End Property
 
+    Public ReadOnly Property Extents As System.Data.DataTable
+        Get
+            If _dt Is Nothing Then Return Nothing
+            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("EXT_NAME", True, "EXT_NAME")
+            result.Columns.Add("SIZE", GetType(Long))
+            result.Columns.Add("COUNT", GetType(Long))
+            For Each _row As System.Data.DataRow In result.Rows
+                _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'")) / (1024 * 1024)
+                _row(2) = _dt.Compute("count(EXT_NAME)", "EXT_NAME = '" & _row(0) & "'")
+            Next
+            Return result
+        End Get
+    End Property
+
+    Public ReadOnly Property Directories As System.Data.DataTable
+        Get
+            If _dt Is Nothing Then Return Nothing
+            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("DIRECTORY_NAME", True, "DIRECTORY_NAME")
+            result.Columns.Add("SIZE", GetType(Long))
+            result.Columns.Add("COUNT", GetType(Long))
+            For Each _row As System.Data.DataRow In result.Rows
+                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _row(0) & "'")) / (1024 * 1024)
+                _row(2) = _dt.Compute("count(DIRECTORY_NAME)", "DIRECTORY_NAME = '" & _row(0) & "'")
+            Next
+            Return result
+        End Get
+    End Property
+
     Public Property DirectoryName As String
         Get
             Return Me._directoryName
@@ -56,6 +84,7 @@
 
         Return _dt
     End Function
+
 
     Private Function __getFiles(_dir As String, _searchPattern As String) As String()
         Dim result As String() = Nothing
