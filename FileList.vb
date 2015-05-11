@@ -2,6 +2,7 @@
 
     Private _directoryName As String = String.Empty
     Private _dt As System.Data.DataTable
+
     Private _progress_directory As String
     Private _progress_fileName As String
     Private _progress_count As Long
@@ -35,15 +36,28 @@
         End Get
     End Property
 
+    Public ReadOnly Property Files() As System.Data.DataTable
+        Get
+            If _dt Is Nothing Then Return Nothing
+            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("FILE_LIST", True, "DIRECTORY_NAME,FILE_NAME,EXT_NAME,SIZE,CREATE_DATE,MODIFY_DATE,SELECTED".Split(","))
+            Return result
+            
+        End Get
+    End Property
+
     Public ReadOnly Property Extents As System.Data.DataTable
         Get
             If _dt Is Nothing Then Return Nothing
             Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("EXT_NAME", True, "EXT_NAME")
             result.Columns.Add("SIZE", GetType(Long))
             result.Columns.Add("COUNT", GetType(Long))
+            result.Columns.Add("SELECTED", GetType(Long))
+
             For Each _row As System.Data.DataRow In result.Rows
                 _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'")) / (1024 * 1024)
+                _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'"))
                 _row(2) = _dt.Compute("count(EXT_NAME)", "EXT_NAME = '" & _row(0) & "'")
+                _row(3) = 0
             Next
             Return result
         End Get
@@ -55,9 +69,14 @@
             Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("DIRECTORY_NAME", True, "DIRECTORY_NAME")
             result.Columns.Add("SIZE", GetType(Long))
             result.Columns.Add("COUNT", GetType(Long))
+            result.Columns.Add("SELECTED", GetType(Long))
             For Each _row As System.Data.DataRow In result.Rows
-                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _row(0) & "'")) / (1024 * 1024)
-                _row(2) = _dt.Compute("count(DIRECTORY_NAME)", "DIRECTORY_NAME = '" & _row(0) & "'")
+                Dim _s As String = _row(0)
+                _s = _s.Replace("'", "''")
+                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'")) / (1024 * 1024)
+                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'"))
+                _row(2) = _dt.Compute("count(DIRECTORY_NAME)", "DIRECTORY_NAME = '" & _s & "'")
+                _row(3) = 0
             Next
             Return result
         End Get
@@ -69,7 +88,7 @@
         End Get
         Set(value As String)
             If (New System.IO.DirectoryInfo(value)).Exists Then
-                Me._directoryName = value
+                Me._directoryName = (New System.IO.DirectoryInfo(value)).FullName
             Else
                 Throw New Exception("Directory Not Found [" & value & "]")
             End If
@@ -80,11 +99,11 @@
         As System.Data.DataTable
 
         _dt = Me._createDataTable
+        Me.DirectoryName = _dir
         _getFiles(_dir, _searchPattern)
 
         Return _dt
     End Function
-
 
     Private Function __getFiles(_dir As String, _searchPattern As String) As String()
         Dim result As String() = Nothing
@@ -95,7 +114,6 @@
         End Try
         Return result
     End Function
-
 
     Private Sub _getFiles(_dir As String, _searchPattern As String)
 
@@ -115,10 +133,8 @@
 
                 If _f.Extension.Length <= 0 Then
                     _dr(3) = "#n/a"
-
                 Else
                     _dr(3) = _f.Extension.Replace(".", "").ToUpper
-
                 End If
 
                 _dr(4) = _f.CreationTime
@@ -126,6 +142,8 @@
                 _dr(6) = _f.LastAccessTime
                 _dr(7) = _f.Length
                 _dr(8) = ENUM_FILE_SELECT_VALUE.NOT_SELECT
+                _dr(9) = "." & _f.FullName.Replace(Me.DirectoryName, String.Empty)
+
 
                 _dt.Rows.Add(_dr)
             Next
@@ -136,8 +154,6 @@
             Next
 
         End If
-
-
     End Sub
 
     Public Function Move(path As String, dt As System.Data.DataTable, Optional mode As ENUM_COPY_MODE = ENUM_COPY_MODE.NOMAL)
@@ -156,18 +172,45 @@
         Return Nothing
     End Function
 
+
+    Public Function SeleteFile(_files() As String) As System.Data.DataTable
+
+        If _dt Is Nothing Then Return Nothing
+
+
+        For Each _row As System.Data.DataRow In _dt.Rows
+            For Each _f As String In _files
+                If _row("FILE_NAME") = _f Then
+                    '_row.BeginEdit()
+                    _row("SELECTED") = 1
+                    '_row.AcceptChanges()
+                End If
+            Next
+
+        Next
+
+        _dt.AcceptChanges()
+        Return Me.Files
+
+    End Function
+
+
+
+
     Private Function _createDataTable()
+
         Dim dt As New System.Data.DataTable("FILE_LIST")
 
         dt.Columns.Add("FILE_NAME", GetType(String))
         dt.Columns.Add("DIRECTORY_NAME", GetType(String))
         dt.Columns.Add("FULL_NAME", GetType(String))
         dt.Columns.Add("EXT_NAME", GetType(String))
-        dt.Columns.Add("CRATE_DATE", GetType(Date))
+        dt.Columns.Add("CREATE_DATE", GetType(Date))
         dt.Columns.Add("MODIFY_DATE", GetType(Date))
         dt.Columns.Add("ACCESS_DATE", GetType(Date))
         dt.Columns.Add("SIZE", GetType(Long))
-        dt.Columns.Add("IS_SELECT", GetType(Long))
+        dt.Columns.Add("SELECTED", GetType(Long))
+        dt.Columns.Add("PATH_NAME", GetType(String))
 
         Return dt
     End Function
