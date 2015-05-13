@@ -115,37 +115,51 @@
         Return result
     End Function
 
-    Private Sub _getFiles(_dir As String, _searchPattern As String)
+    Private Function __chkFile(_fName As String) As Boolean
+        Dim result As Boolean
+        Dim _f As System.IO.FileInfo
+        Try
+            _f = New System.IO.FileInfo(_fName)
+            result = True
+        Catch ex As Exception
+            result = False
+        Finally
+            _f = Nothing
+        End Try
 
+        Return result
+    End Function
+
+
+    Private Sub _getFiles(_dir As String, _searchPattern As String)
         Dim _files As String() = __getFiles(_dir, _searchPattern)
         Dim _subDir As String()
-
         If _files Is Nothing Then
-
         Else
-
             For Each _fName As String In _files
-                Dim _dr As System.Data.DataRow = _dt.NewRow
-                Dim _f As System.IO.FileInfo = New System.IO.FileInfo(_fName)
-                _dr(0) = _f.Name
-                _dr(1) = _f.DirectoryName
-                _dr(2) = _f.FullName
+                If __chkFile(_fName) = True Then
+                    Dim _dr As System.Data.DataRow = _dt.NewRow
 
-                If _f.Extension.Length <= 0 Then
-                    _dr(3) = "#n/a"
-                Else
-                    _dr(3) = _f.Extension.Replace(".", "").ToUpper
+                    Dim _f As System.IO.FileInfo = New System.IO.FileInfo(_fName)
+                    _dr(0) = _f.Name
+                    _dr(1) = _f.DirectoryName
+                    _dr(2) = _f.FullName
+
+                    If _f.Extension.Length <= 0 Then
+                        _dr(3) = "#n/a"
+                    Else
+                        _dr(3) = _f.Extension.Replace(".", "").ToUpper
+                    End If
+
+                    _dr(4) = _f.CreationTime
+                    _dr(5) = _f.LastWriteTime
+                    _dr(6) = _f.LastAccessTime
+                    _dr(7) = _f.Length
+                    _dr(8) = ENUM_FILE_SELECT_VALUE.NOT_SELECT
+                    _dr(9) = "." & _f.FullName.Replace(Me.DirectoryName, String.Empty)
+                    _dt.Rows.Add(_dr)
                 End If
 
-                _dr(4) = _f.CreationTime
-                _dr(5) = _f.LastWriteTime
-                _dr(6) = _f.LastAccessTime
-                _dr(7) = _f.Length
-                _dr(8) = ENUM_FILE_SELECT_VALUE.NOT_SELECT
-                _dr(9) = "." & _f.FullName.Replace(Me.DirectoryName, String.Empty)
-
-
-                _dt.Rows.Add(_dr)
             Next
 
             _subDir = System.IO.Directory.GetDirectories(_dir)
@@ -200,7 +214,6 @@
     Private Function _createDataTable()
 
         Dim dt As New System.Data.DataTable("FILE_LIST")
-
         dt.Columns.Add("FILE_NAME", GetType(String))
         dt.Columns.Add("DIRECTORY_NAME", GetType(String))
         dt.Columns.Add("FULL_NAME", GetType(String))
