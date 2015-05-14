@@ -12,75 +12,107 @@
         _dt = _createDataTable()
     End Sub
 
-    Public ReadOnly Property ProgressDirectory As String
+    Public ReadOnly Property CountOfFiles As Long
         Get
-            Return Me._progress_directory
+            Return _dt.Rows.Count
         End Get
     End Property
 
-    Public ReadOnly Property ProgressFilename As String
+    Public ReadOnly Property CountOfDirectory As Long
         Get
-            Return Me._progress_fileName
+            Return Me.getDirectories.Rows.Count
         End Get
     End Property
 
-    Public ReadOnly Property ProgressCount As Long
+    Public ReadOnly Property CountOfExtentType As Long
         Get
-            Return Me._progress_count
+            Return Me.getExtents.Rows.Count
         End Get
     End Property
 
-    Public ReadOnly Property ProgressMax As Long
+    Public ReadOnly Property CountOfSelectedFile As Long
         Get
-            Return Me._progress_max
+            Dim dv1 As System.Data.DataView = New System.Data.DataView(Me.getFiles, "SELECTED = 1", String.Empty, DataViewRowState.CurrentRows)
+            If dv1.Count > 0 Then Return CType(dv1.ToTable().Compute("count(size)", String.Empty), Long)
+            Return 0
         End Get
     End Property
 
-    Public ReadOnly Property Files() As System.Data.DataTable
+    Public ReadOnly Property CountOfSelectedDirectory As Long
         Get
-            If _dt Is Nothing Then Return Nothing
-            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("FILE_LIST", True, "DIRECTORY_NAME,FILE_NAME,EXT_NAME,SIZE,CREATE_DATE,MODIFY_DATE,SELECTED".Split(","))
-            Return result
-            
+            Dim dv1 As System.Data.DataView = New System.Data.DataView(Me.getDirectories, "SELECTED = 1", String.Empty, DataViewRowState.CurrentRows)
+            If dv1.Count > 0 Then Return CType(dv1.ToTable().Compute("count(size)", String.Empty), Long)
+            Return 0
         End Get
     End Property
 
-    Public ReadOnly Property Extents As System.Data.DataTable
+    Public ReadOnly Property CountOfSelectedExtentType As Long
         Get
-            If _dt Is Nothing Then Return Nothing
-            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("EXT_NAME", True, "EXT_NAME")
-            result.Columns.Add("SIZE", GetType(Long))
-            result.Columns.Add("COUNT", GetType(Long))
-            result.Columns.Add("SELECTED", GetType(Long))
-
-            For Each _row As System.Data.DataRow In result.Rows
-                _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'")) / (1024 * 1024)
-                _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'"))
-                _row(2) = _dt.Compute("count(EXT_NAME)", "EXT_NAME = '" & _row(0) & "'")
-                _row(3) = 0
-            Next
-            Return result
+            Dim dv1 As System.Data.DataView = New System.Data.DataView(Me.getExtents, "SELECTED = 1", String.Empty, DataViewRowState.CurrentRows)
+            If dv1.Count > 0 Then Return CType(dv1.ToTable().Compute("count(size)", String.Empty), Long)
+            Return 0
         End Get
     End Property
 
-    Public ReadOnly Property Directories As System.Data.DataTable
+    Public ReadOnly Property SumOfSize As Long
         Get
-            If _dt Is Nothing Then Return Nothing
-            Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("DIRECTORY_NAME", True, "DIRECTORY_NAME")
-            result.Columns.Add("SIZE", GetType(Long))
-            result.Columns.Add("COUNT", GetType(Long))
-            result.Columns.Add("SELECTED", GetType(Long))
-            For Each _row As System.Data.DataRow In result.Rows
-                Dim _s As String = _row(0)
-                _s = _s.Replace("'", "''")
-                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'")) / (1024 * 1024)
-                _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'"))
-                _row(2) = _dt.Compute("count(DIRECTORY_NAME)", "DIRECTORY_NAME = '" & _s & "'")
-                _row(3) = 0
-            Next
-            Return result
+            Dim dv1 As System.Data.DataView = New System.Data.DataView(Me.getFiles, String.Empty, String.Empty, DataViewRowState.CurrentRows)
+            If dv1.Count > 0 Then Return CType(dv1.ToTable().Compute("Sum(size)", String.Empty), Long) / (1024 * 1024)
+            Return 0
         End Get
     End Property
+
+
+    Public ReadOnly Property SumOfSelectedSize As Long
+        Get
+            Dim dv1 As System.Data.DataView = New System.Data.DataView(Me.getFiles, "SELECTED = 1", String.Empty, DataViewRowState.CurrentRows)
+            If dv1.Count > 0 Then Return CType(dv1.ToTable().Compute("Sum(size)", String.Empty), Long) / (1024 * 1024)
+            Return 0
+        End Get
+    End Property
+
+    Public Function getFiles() As System.Data.DataTable
+        If _dt Is Nothing Then Return Nothing
+        Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("FILE_LIST", True, "DIRECTORY_NAME,FILE_NAME,EXT_NAME,SIZE,CREATE_DATE,MODIFY_DATE,SELECTED".Split(","))
+        Return result
+
+    End Function
+
+    Public Function getExtents() As System.Data.DataTable
+
+        If _dt Is Nothing Then Return Nothing
+        Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("EXT_NAME", True, "EXT_NAME")
+        result.Columns.Add("SIZE", GetType(Long))
+        result.Columns.Add("COUNT", GetType(Long))
+        result.Columns.Add("SELECTED", GetType(Long))
+
+        For Each _row As System.Data.DataRow In result.Rows
+            _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'")) / (1024 * 1024)
+            _row(1) = (_dt.Compute("Sum(size)", "EXT_NAME = '" & _row(0) & "'"))
+            _row(2) = _dt.Compute("count(EXT_NAME)", "EXT_NAME = '" & _row(0) & "'")
+            _row(3) = 0
+        Next
+        Return result
+    End Function
+
+    Function getDirectories() As System.Data.DataTable
+
+        If _dt Is Nothing Then Return Nothing
+        Dim result As System.Data.DataTable = _dt.DefaultView.ToTable("DIRECTORY_NAME", True, "DIRECTORY_NAME")
+        result.Columns.Add("SIZE", GetType(Long))
+        result.Columns.Add("COUNT", GetType(Long))
+        result.Columns.Add("SELECTED", GetType(Long))
+        For Each _row As System.Data.DataRow In result.Rows
+            Dim _s As String = _row(0)
+            _s = _s.Replace("'", "''")
+            _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'")) / (1024 * 1024)
+            _row(1) = (_dt.Compute("Sum(size)", "DIRECTORY_NAME = '" & _s & "'"))
+            _row(2) = _dt.Compute("count(DIRECTORY_NAME)", "DIRECTORY_NAME = '" & _s & "'")
+            _row(3) = 0
+        Next
+        Return result
+
+    End Function
 
     Public Property DirectoryName As String
         Get
@@ -176,13 +208,10 @@
     End Function
 
     Public Function Copy(path As String, dt As System.Data.DataTable, Optional mode As ENUM_COPY_MODE = ENUM_COPY_MODE.NOMAL)
-
         Return Nothing
     End Function
 
     Public Function Delete(dt As System.Data.DataTable)
-
-
         Return Nothing
     End Function
 
@@ -204,12 +233,9 @@
         Next
 
         _dt.AcceptChanges()
-        Return Me.Files
+        Return Me.getFiles
 
     End Function
-
-
-
 
     Private Function _createDataTable()
 
